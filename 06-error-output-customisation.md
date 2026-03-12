@@ -31,7 +31,7 @@ documentation).
 
 ## Mapping Fail to HTTP responses
 
-The `Fail` ADT (see [Error Handling](04-error-handling.md)) needs a
+The `Fail` ADT (see [Error Handling](05-error-handling.md)) needs a
 bidirectional mapping to HTTP status codes and error messages. The forward
 direction is used by the server; the reverse is used by the client interpreter
 in tests:

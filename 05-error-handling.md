@@ -34,7 +34,7 @@ This is not a sealed hierarchy — modules can extend it with domain-specific
 failures. The `Fail` type flows through the entire application: service methods
 return `Either[Fail, T]`, endpoint handlers propagate it, and Tapir's error
 output maps it to HTTP status codes (see the
-[Authentication](01-authentication.md) chapter).
+[Authentication](08-authentication.md) chapter).
 
 ## The `either` block
 
@@ -135,7 +135,7 @@ guard: it prevents accidentally using `transact` when the body returns an
 `transactEither` instead.
 
 Endpoint handlers use `transactEither` to wrap service calls (see the
-[Authentication](01-authentication.md) chapter for how these handlers are
+[Authentication](08-authentication.md) chapter for how these handlers are
 wired):
 
 ```scala

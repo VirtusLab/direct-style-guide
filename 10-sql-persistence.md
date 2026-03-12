@@ -158,7 +158,7 @@ def find(limit: Int)(using DbTx): Vector[Email] =
 
 All database operations require a `DbTx` context parameter. The `DB` class
 provides two transaction entry points (see [Error
-Handling](04-error-handling.md) for `transactEither`):
+Handling](05-error-handling.md) for `transactEither`):
 
 ```scala
 def transact[T](f: DbTx ?=> T)(using NotGiven[T <:< Either[?, ?]]): T =

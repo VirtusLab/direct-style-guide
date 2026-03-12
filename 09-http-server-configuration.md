@@ -29,7 +29,7 @@ val baseEndpoint: PublicEndpoint[Unit, Fail, Unit, Any] =
 Both headers are set because older browsers may only support one or the other.
 Since these are Tapir output headers, they're included in every successful
 response. Error responses (decode failures, 404s) are handled separately by the
-server options — see [Error Output Customisation](05-error-output-customisation.md).
+server options — see [Error Output Customisation](06-error-output-customisation.md).
 
 ## CORS
 
@@ -56,7 +56,7 @@ val corsInterceptor = CORSInterceptor.customOrThrow[Identity](
 ```
 
 The CORS interceptor is part of the server options interceptor chain (see
-[OpenTelemetry Observability](03-opentelemetry-observability.md) for the full
+[OpenTelemetry Observability](15-opentelemetry-observability.md) for the full
 chain ordering). It handles preflight `OPTIONS` requests automatically.
 
 ## Serving static files

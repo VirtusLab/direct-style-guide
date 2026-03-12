@@ -133,7 +133,7 @@ def log(config: Config): Unit =
 
 Because `Sensitive.toString` returns `***`, passwords and API keys are masked in
 the log output. The production code also logs build metadata here — see [Version
-API](10-version-api.md).
+API](11-version-api.md).
 
 ## Validation at load time
 

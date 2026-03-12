@@ -86,7 +86,7 @@ automatically.
 `MailgunEmailSender` uses sttp's `SyncBackend` to call the Mailgun API. Because
 the same backend is used for all outgoing HTTP calls, it benefits from the
 observability instrumentation (tracing, metrics) configured at the application
-level (see [OpenTelemetry Observability](03-opentelemetry-observability.md)):
+level (see [OpenTelemetry Observability](15-opentelemetry-observability.md)):
 
 ```scala
 class MailgunEmailSender(config: MailgunConfig, sttpBackend: SyncBackend)
@@ -109,7 +109,7 @@ class MailgunEmailSender(config: MailgunConfig, sttpBackend: SyncBackend)
 ## Background processing
 
 `EmailService.startProcesses` launches two background forks within the Ox scope
-(see [Background Processes](11-background-processes.md)):
+(see [Background Processes](02-background-processes.md)):
 
 ```scala
 class EmailService(...) extends EmailScheduler:
@@ -125,7 +125,7 @@ class EmailService(...) extends EmailScheduler:
 ```
 
 `foreverPeriodically` uses the `fork` + `forever` + `sleep` pattern described in
-[Background Processes](11-background-processes.md) to create a daemon loop. The
+[Background Processes](02-background-processes.md) to create a daemon loop. The
 first fork sends queued emails in batches; the second updates a gauge metric
 with the current queue size.
 
@@ -150,7 +150,7 @@ batch. The batch size and interval are configurable via `EmailConfig`.
 
 Emails are stored in a `scheduled_emails` table. The model provides `insert`,
 `find`, `count`, and `delete` operations using the database patterns from [SQL
-Persistence](13-sql-persistence.md). All methods take `(using DbTx)` to
+Persistence](10-sql-persistence.md). All methods take `(using DbTx)` to
 participate in transactions.
 
 ## Testing emails

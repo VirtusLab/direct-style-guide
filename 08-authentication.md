@@ -12,7 +12,7 @@
 
 Two building blocks are defined for all endpoints in the application.
 `baseEndpoint` specifies the error output format (see [Error Output
-Customisation](05-error-output-customisation.md)):
+Customisation](06-error-output-customisation.md)):
 
 ```scala
 val baseEndpoint: PublicEndpoint[Unit, Fail, Unit, Any] =

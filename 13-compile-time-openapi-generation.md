@@ -39,7 +39,7 @@ object PasswordResetApi extends EndpointsForDocs:
 
 `wireList` is a MacWire macro that collects all values matching the element type
 — see [Compile-Time Dependency
-Injection](07-compile-time-dependency-injection.md).
+Injection](04-compile-time-dependency-injection.md).
 
 All endpoint lists are merged in a single place:
 

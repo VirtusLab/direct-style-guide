@@ -57,7 +57,7 @@ case class DefaultDecodeFailureHandler[F[_]](
   context (which input failed, why).
 - **`response`** — assembles the final output from the status code, headers, and
   message. By default, this returns plain text (see [Error Output
-  Customisation](05-error-output-customisation.md) for returning JSON instead).
+  Customisation](06-error-output-customisation.md) for returning JSON instead).
 
 ## Customizing the handler
 
