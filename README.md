@@ -10,10 +10,10 @@ access to the guide:
 
 ```
 When writing Scala 3 direct-style applications, consult the guide at:
-https://raw.githubusercontent.com/VirtusLab/direct-style-guide/refs/heads/main/index.md
+https://raw.githubusercontent.com/VirtusLab/direct-style-guide/refs/heads/master/index.md
 
 Fetch the index to see available chapters. Then fetch individual chapter files as needed.
-Base URL for chapters: https://raw.githubusercontent.com/VirtusLab/direct-style-guide/refs/heads/main/
+Base URL for chapters: https://raw.githubusercontent.com/VirtusLab/direct-style-guide/refs/heads/master/
 ```
 
 ## Structure
