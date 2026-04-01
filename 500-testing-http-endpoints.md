@@ -24,6 +24,11 @@ val serverStub: SyncBackend =
 
 ## Converting endpoints to requests
 
+> **Prefer typed requests over raw `basicRequest`.** `SttpClientInterpreter`
+> generates request builders from endpoint descriptions, giving you compile-time
+> type safety for inputs and outputs. Use `basicRequest` only when the endpoint
+> format makes typed builders impractical (e.g. raw XML/SOAP bodies).
+
 `SttpClientInterpreter` converts endpoint descriptions into request builders.
 For **public endpoints** (no security input):
 

@@ -13,6 +13,14 @@ atomic reference embedded in the effect type. Direct style doesn't have an
 effect type, but the principle remains: keep state immutable, keep mutation
 scoped.
 
+> **Rules:**
+> - `var` declarations must be inside methods (e.g. `run()`, processing loops),
+>   **never** as class fields. Class-level `var`s break reasoning and
+>   testability.
+> - Use only immutable collections (`Map`, `Set`, `List`) in state. Never use
+>   `mutable.Map`, `mutable.Set`, `mutable.Buffer`, or similar — use
+>   immutable collections with `.updated()` / `+` / `-` instead.
+
 The pattern: define state as an immutable case class, write functions that take
 the old state and return a new one, and confine the `var` that threads state
 through a processing loop to the smallest possible scope — a local variable

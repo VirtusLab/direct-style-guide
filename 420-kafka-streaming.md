@@ -6,6 +6,11 @@
 
 ---
 
+> **Important:** The ox-kafka abstractions (`KafkaFlow`, `KafkaDrain`,
+> `ConsumerSettings`, `ProducerSettings`) replace direct use of
+> `org.apache.kafka.clients`. Do not use raw `KafkaConsumer` or
+> `KafkaProducer` — use the Flow-based API shown below instead.
+
 ## Consuming from Kafka
 
 `KafkaFlow.subscribe` creates a `Flow[ReceivedMessage[K, V]]` from a Kafka
