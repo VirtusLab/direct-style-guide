@@ -70,6 +70,69 @@ Every branch returns a new `ProcessingState` via `.copy()`. The caller in
 `run()` reassigns `state =` with the result. No field mutation, no shared
 mutable state.
 
+## Typed outcomes for state transitions
+
+When a state transition has multiple outcomes — appended, skipped as duplicate,
+dropped as late — the return type must distinguish them. Returning a bare
+`ProcessingState` in every branch hides what happened and forces callers to
+guess or rely on side-effect signals (metrics, logs) to know the outcome.
+
+Encode outcomes as an ADT:
+
+```scala
+enum HandleResult:
+  case Appended(state: ProcessingState)
+  case Duplicate(state: ProcessingState)
+  case Dropped
+```
+
+Each variant carries exactly the data it needs — `Dropped` carries no state
+because nothing changed. The transition function returns the ADT:
+
+```scala
+def handleItem(state: ProcessingState, item: Item): HandleResult =
+  if isLate(item) then HandleResult.Dropped
+  else if isDuplicate(state, item) then HandleResult.Duplicate(state)
+  else
+    writeToLocal(item)
+    HandleResult.Appended(
+      state.copy(
+        processed = state.processed.updated(item.key, item.offset),
+        pending = state.pending + item.key
+      )
+    )
+```
+
+The caller pattern-matches to thread state and report metrics:
+
+```scala
+def run(items: Iterator[Item]): Unit =
+  var state = init()
+  for item <- items do
+    handleItem(state, item) match
+      case HandleResult.Appended(s) =>
+        state = s
+        metrics.itemProcessed(ProcessedReason.Appended)
+      case HandleResult.Duplicate(s) =>
+        state = s
+        metrics.itemProcessed(ProcessedReason.Duplicate)
+      case HandleResult.Dropped =>
+        metrics.itemProcessed(ProcessedReason.Dropped)
+```
+
+The same principle applies to batch operations. A flush that can succeed or
+partially fail should not return `(State, Boolean)` — use an ADT:
+
+```scala
+enum FlushResult:
+  case Success(state: ProcessingState)
+  case PartialFailure(state: ProcessingState, failedKeys: List[String])
+```
+
+> **Rule of thumb:** if a function returns the same type regardless of what
+> happened, and the caller would need to inspect side effects (logs, metrics,
+> external state) to learn the outcome, the return type is lying. Add an ADT.
+
 ## Accumulating state over collections
 
 When building or updating state from a collection, `foldLeft` or a
@@ -84,6 +147,54 @@ def init(): ProcessingState =
       acc.copy(processed = acc.processed.updated(key, existing.maxOffset))
     else acc
 ```
+
+## Functional combinators over mutable loops
+
+When processing a collection with a pass/fail outcome per element, use
+functional combinators instead of `var` + imperative loop + mutation:
+
+```scala
+// Bad: mutable accumulator
+def flushAll(buckets: List[Bucket]): Boolean =
+  var allSuccess = true
+  for bucket <- buckets do
+    try upload(bucket)
+    catch case e: Exception =>
+      logger.error("Failed: {}", e.getMessage)
+      allSuccess = false
+  allSuccess
+
+// Good: partition into successes and failures
+def flushAll(buckets: List[Bucket]): FlushResult =
+  val (successes, failures) = buckets.partition(tryUpload)
+  if failures.isEmpty then FlushResult.Success
+  else FlushResult.PartialFailure(failures.map(_.key))
+
+private def tryUpload(bucket: Bucket): Boolean =
+  try
+    upload(bucket)
+    true
+  catch case e: Exception =>
+    logger.error("Failed to upload {}: {}", bucket.key, e.getMessage)
+    false
+```
+
+Similarly, filtering a map with a predicate:
+
+```scala
+// Bad: var + imperative removal
+var newBuckets = state.buckets
+for (key, bucket) <- state.buckets do
+  if isSealed(key) && !bucket.isDirty then
+    newBuckets = newBuckets.removed(key)
+
+// Good: filterNot
+val newBuckets = state.buckets.filterNot: (key, bucket) =>
+  isSealed(key) && !bucket.isDirty
+```
+
+The functional version is shorter, avoids intermediate `var`s, and makes the
+intent immediately clear — "keep buckets that are not sealed-and-clean."
 
 ## Handling failures in transitions
 
@@ -189,3 +300,86 @@ class InMemoryStore extends Store:
 
 This lets tests verify retry behavior by toggling `failUploads` between
 flushes — no real infrastructure, no test containers.
+
+## Typed enums over stringly-typed parameters
+
+When an interface accepts a fixed set of labels — metric reasons, flush
+outcomes, event types — use an `enum`, not a `String`. A typo in a string
+compiles silently and produces a wrong metric label; a typo in an enum is a
+compile error.
+
+```scala
+// Bad: stringly-typed
+trait Metrics:
+  def itemProcessed(reason: String): Unit    // "appended", "dropped", "duplicate"
+  def flushOutcome(outcome: String): Unit    // "success", "failure"
+
+metrics.itemProcessed("droped")  // compiles, wrong label — silent bug
+```
+
+```scala
+// Good: enum-typed
+enum ProcessedReason:
+  case Appended, Dropped, Duplicate
+
+enum FlushOutcome:
+  case Success, Failure
+
+trait Metrics:
+  def itemProcessed(reason: ProcessedReason): Unit
+  def flushOutcome(outcome: FlushOutcome): Unit
+
+metrics.itemProcessed(ProcessedReason.Droped)  // compile error
+```
+
+This applies to any boundary where a fixed vocabulary is passed across a trait
+— metric labels, log categories, status codes. The enum is the source of truth;
+the `toString` conversion happens once, at the edge (e.g. in the OpenTelemetry
+implementation), not at every call site.
+
+## Small, well-named functions
+
+A function that checks three conditions and performs an action is four functions:
+three named predicates and one orchestrator. The orchestrator reads like an
+outline:
+
+```scala
+// Bad: one function doing everything
+def handleItem(state: State, item: Item): HandleResult =
+  val key = keyFrom(item.timestamp)
+  val hourStart = parseHourStart(key)
+  val cutoff = Instant.now().minus(Duration.ofHours(maxLateHours))
+  if hourStart.isBefore(cutoff) then
+    logger.debug("Dropping late item")
+    return HandleResult.Dropped
+  val bucket = getOrCreateBucket(state, key)
+  if bucket.isDuplicate(item.partition, item.offset) then
+    return HandleResult.Duplicate(state.withBucket(key, bucket))
+  bucket.append(item)
+  HandleResult.Appended(state.withBucket(key, bucket))
+```
+
+```scala
+// Good: named predicates, flat orchestration
+def handleItem(state: State, item: Item): HandleResult =
+  val key = keyFrom(item.timestamp)
+  if isLate(key) then HandleResult.Dropped
+  else
+    val bucket = getOrCreateBucket(state, key)
+    if bucket.isDuplicate(item.partition, item.offset) then
+      HandleResult.Duplicate(state.withBucket(key, bucket))
+    else
+      appendToBucket(bucket, item)
+      HandleResult.Appended(state.withBucket(key, bucket))
+
+private def isLate(key: String): Boolean =
+  HourKey.hourStart(key).isBefore(Instant.now().minus(Duration.ofHours(maxLateHours)))
+
+private def appendToBucket(bucket: Bucket, item: Item): Unit =
+  val record = buildRecord(item)
+  bucket.append(item.partition, item.offset, record)
+```
+
+Benefits: each predicate is independently testable, the orchestrator has no
+`return` statements, and the reader sees intent ("is this late?") before
+mechanism ("parse hour, compare to cutoff").

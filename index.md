@@ -24,8 +24,10 @@ the direct-style ecosystem.
 
 - [Functional Patterns in Direct Style](140-functional-patterns.md) — Immutable
   state case classes with scoped `var` mutation, pure state transitions via
-  `.copy()`, `foldLeft` accumulation, testing without mocks, trait-based effect
-  boundaries.
+  `.copy()`, typed outcome ADTs for transitions, `foldLeft` accumulation,
+  functional combinators over mutable loops, typed enums over stringly-typed
+  parameters, small well-named functions, testing without mocks, trait-based
+  effect boundaries.
 
 ## Error Handling
 
