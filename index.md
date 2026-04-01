@@ -22,10 +22,10 @@ the direct-style ecosystem.
   — MacWire `autowire`, `autowireMembersOf` for config extraction, `wireList`
   for collecting endpoints.
 
-- [Functional Patterns in Direct Style](140-functional-patterns.md) — Immutable
-  state case classes with scoped `var` mutation, pure state transitions via
-  `.copy()`, `foldLeft` accumulation, testing without mocks, trait-based effect
-  boundaries.
+- [Functional Patterns in Direct Style](140-functional-patterns.md) — Small
+  single-responsibility methods, domain types over primitives, truthful
+  signatures, making illegal states unrepresentable, immutable state with
+  scoped `var` mutation, pure state transitions, trait-based effect boundaries.
 
 ## Error Handling
 
