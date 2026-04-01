@@ -6,6 +6,13 @@
 
 ---
 
+> **Important:** The ox-kafka abstractions (`KafkaFlow`, `KafkaDrain`,
+> `ConsumerSettings`, `ProducerSettings`) replace direct use of the low-level
+> `KafkaConsumer` and `KafkaProducer` APIs from `org.apache.kafka.clients`.
+> Types such as `ProducerRecord` and `RecordMetadata` are still used with
+> ox-kafka, but you should not construct or manage `KafkaConsumer` /
+> `KafkaProducer` instances directly — use the Flow-based API shown below instead.
+
 ## Consuming from Kafka
 
 `KafkaFlow.subscribe` creates a `Flow[ReceivedMessage[K, V]]` from a Kafka

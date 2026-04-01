@@ -139,6 +139,10 @@ In tests, `OpenTelemetry.noop()` is passed, so metric calls become no-ops.
 
 ## Trace context propagation with Ox
 
+> **Required:** When using OpenTelemetry, you **must** configure
+> `PropagatingVirtualThreadFactory` in `OxApp`. Without it, forked threads have
+> an empty context, producing orphaned spans and logs without trace correlation.
+
 `PropagatingVirtualThreadFactory` from the `ox otel-context` module propagates
 OpenTelemetry context to virtual threads created by Ox:
 
@@ -155,9 +159,6 @@ object Main extends OxApp.Simple:
     deps.httpApi.start().discard
     never
 ```
-
-Without this factory, forked threads would have an empty context, producing
-orphaned spans and logs without trace correlation.
 
 ## Log correlation via MDC
 

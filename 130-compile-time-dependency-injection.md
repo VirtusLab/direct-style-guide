@@ -7,6 +7,11 @@
 
 ---
 
+> **When to use:** MacWire is most valuable when the main class grows large or
+> the dependency graph is complex enough that manual constructor wiring becomes
+> error-prone. For small projects with a handful of components, direct
+> constructor calls in `Main` are simpler and sufficient.
+
 ## The dependency graph
 
 The entire application's dependency graph is constructed in a single
