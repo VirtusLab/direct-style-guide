@@ -38,22 +38,24 @@ Each chapter covers a single use-case and follows this format:
    artifactId`) without versions, each with a short explanation.
 3. **Content** — `##` sections with prose and code examples.
 
-## Reference project
+## Sources
 
-Most code examples are based on
-[Bootzooka](https://github.com/softwaremill/bootzooka), a production-ready
-starter project using Tapir, Ox, sttp, and PostgreSQL. Clone it to study the
-patterns before writing.
+Chapters are based on patterns from reference projects and library
+documentation. Clone/read the relevant sources before writing a chapter.
 
-Additional documentation sources:
+Reference projects:
+- [Bootzooka](https://github.com/softwaremill/bootzooka) — production-ready
+  starter using Tapir, Ox, sttp, and PostgreSQL
+
+Library documentation:
 - [Tapir](https://tapir.softwaremill.com)
 - [Ox](https://ox.softwaremill.com)
 - [sttp client](https://sttp.softwaremill.com)
 
 ## Instructions for adding a new chapter
 
-1. **Clone Bootzooka** to a temporary directory and explore the relevant source
-   files. Read the actual code — don't guess at APIs or patterns.
+1. **Read the sources.** Clone the relevant reference project and/or read the
+   library documentation. Don't guess at APIs or patterns.
 
 2. **Identify the use-case.** Each chapter is a single, focused topic (e.g.,
    "authentication", "testing HTTP endpoints", "observability"). Don't combine
@@ -66,9 +68,8 @@ Additional documentation sources:
 4. **Write the chapter** following the format:
    - Start with a `#` title and a description paragraph.
    - List dependencies as SBT coordinates without versions.
-   - Write `##` sections. Each section should explain one concept, then show the
-     code from Bootzooka that implements it. Show real code from the project,
-     not invented examples.
+   - Write `##` sections. Each section should explain one concept with code
+     examples based on the reference projects or library documentation.
    - Explain Scala 3 / direct-style specifics where they appear naturally
      (context functions, `either` blocks, `supervised` scopes, virtual threads).
      Don't force explanations of features that aren't relevant to the section.
@@ -77,9 +78,9 @@ Additional documentation sources:
 
 ### Writing guidelines
 
-- **Use real code.** Every code block should come from Bootzooka (or be a
-  minimal adaptation of it). If the project doesn't have an example of what you
-  need, say so rather than inventing one.
+- **Base code on real sources.** Code examples should be drawn from the
+  reference projects or library documentation, adapted to show only the
+  relevant pattern.
 - **Explain the why, not just the what.** Don't just show code — explain the
   design decision behind it. Why is `Auth` generic over `T`? Why is the tracing
   interceptor prepended? Why use `transactEither` instead of `transact`?
@@ -87,8 +88,7 @@ Additional documentation sources:
   observability matters. The reader chose this chapter because they want to
   implement the thing.
 - **Dependencies are library coordinates only.** No version numbers — they go
-  stale. The reader will use the versions from Bootzooka's `build.sbt` or the
-  library's latest release.
+  stale. The reader will use the library's latest release.
 - **Show only the essence.** Each code example should illustrate exactly the
   pattern being discussed. Strip out unrelated features, domain details, and
   infrastructure that blur the point — the reader can find the full version in
