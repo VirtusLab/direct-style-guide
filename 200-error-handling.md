@@ -41,10 +41,10 @@ def findUser(id: Id[User])(using DbTx): Either[Fail, User] =
 > signatures](140-functional-patterns.md) for the broader principle.
 
 > **Warning:** Do not use bare `try`/`catch` for converting expected exceptions
-> to domain types. Use `either.catching[E]` instead (see below). Reserve
-> `try`/`catch` for defect boundaries only (e.g. `catch NonFatal` at the top
-> of a `forever` loop to log and continue).
-
+> to domain types. Use the `.catching[E]` extension instead (enabled via
+> `import ox.either.catching`; see below). Reserve `try`/`catch` for defect
+> boundaries only (e.g. `catch NonFatal` at the top of a `forever` loop to log
+> and continue).
 ## The Fail ADT
 
 The application defines a `Fail` ADT as the application-wide error type:
