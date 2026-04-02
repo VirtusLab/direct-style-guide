@@ -40,6 +40,12 @@ def findUser(id: Id[User])(using DbTx): Either[Fail, User] =
 > error paths from callers and bypasses the type system. See [Truthful
 > signatures](140-functional-patterns.md) for the broader principle.
 
+> **Warning:** Do not use bare `try`/`catch` for converting expected exceptions
+> to domain types. Use `Try { ... }.toOption`, `Try { ... }.toEither`, or
+> `either.catching[E]` instead. Reserve `try`/`catch` for defect boundaries
+> only (e.g. `catch NonFatal` at the top of a `forever` loop to log and
+> continue).
+
 ## The Fail ADT
 
 The application defines a `Fail` ADT as the application-wide error type:
@@ -159,6 +165,49 @@ available via `.orThrow`:
 ```scala
 val value: Int = result.orThrow
 ```
+
+## Wrapping exception-throwing code
+
+Java and third-party libraries often throw exceptions for failures that are
+expected in your domain. Convert these to values at the boundary — never let
+`try`/`catch` become your error-handling strategy for expected failures.
+
+Use `Try { ... }` to capture exceptions and convert them to `Option` or
+`Either`:
+
+```scala
+// Wrong — bare try/catch for an expected failure:
+def download(key: String): Option[Path] =
+  try
+    val path = doDownload(key)
+    Some(path)
+  catch case _: NotFoundException => None
+
+// Right — structured conversion to Option:
+def download(key: String): Option[Path] =
+  Try(doDownload(key)).toOption
+
+// Or when the failure is domain-meaningful:
+def download(key: String): Either[StorageError, Path] =
+  Try(doDownload(key)).toEither.left.map:
+    case _: NotFoundException => StorageError.NotFound(key)
+    case e => StorageError.Unexpected(e.getMessage)
+```
+
+Use `either.catching[E]` when you know the specific exception type and want to
+stay within an `either` block:
+
+```scala
+val result: Either[IllegalArgumentException, Int] =
+  (if userInput then 10 else throw new IllegalArgumentException("boom"))
+    .catching[IllegalArgumentException]
+```
+
+> **Important:** Never use bare `try`/`catch` for expected failures — this
+> hides error paths and bypasses the type system. The `try`/`catch` pattern is
+> only appropriate for truly unexpected exceptions (defects) at the outermost
+> boundary of a processing loop (e.g. a `catch NonFatal` in a `forever` loop
+> to prevent the fiber from dying).
 
 ## Nesting rules
 

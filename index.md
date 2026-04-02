@@ -27,6 +27,10 @@ the direct-style ecosystem.
   signatures, making illegal states unrepresentable, immutable state with
   scoped `var` mutation, pure state transitions, trait-based effect boundaries.
 
+- [Shared State Across Fibers](150-shared-state-across-fibers.md) — Single-owner
+  pattern with channels, `AtomicReference` with `updateAndGet`, extracting
+  return values, choosing the right pattern.
+
 ## Error Handling
 
 - [Error Handling](200-error-handling.md) — `Fail` ADT, Ox `either` blocks with
