@@ -41,10 +41,9 @@ def findUser(id: Id[User])(using DbTx): Either[Fail, User] =
 > signatures](140-functional-patterns.md) for the broader principle.
 
 > **Warning:** Do not use bare `try`/`catch` for converting expected exceptions
-> to domain types. Use `Try { ... }.toOption`, `Try { ... }.toEither`, or
-> `either.catching[E]` instead. Reserve `try`/`catch` for defect boundaries
-> only (e.g. `catch NonFatal` at the top of a `forever` loop to log and
-> continue).
+> to domain types. Use `either.catching[E]` instead (see below). Reserve
+> `try`/`catch` for defect boundaries only (e.g. `catch NonFatal` at the top
+> of a `forever` loop to log and continue).
 
 ## The Fail ADT
 
@@ -169,11 +168,9 @@ val value: Int = result.orThrow
 ## Wrapping exception-throwing code
 
 Java and third-party libraries often throw exceptions for failures that are
-expected in your domain. Convert these to values at the boundary — never let
-`try`/`catch` become your error-handling strategy for expected failures.
-
-Use `Try { ... }` to capture exceptions and convert them to `Option` or
-`Either`:
+expected in your domain. Convert these to values at the boundary using
+`.catching` — never let `try`/`catch` become your error-handling strategy for
+expected failures.
 
 ```scala
 // Wrong — bare try/catch for an expected failure:
@@ -183,24 +180,17 @@ def download(key: String): Option[Path] =
     Some(path)
   catch case _: NotFoundException => None
 
-// Right — structured conversion to Option:
+// Right — use .catching to convert the exception to Either, then to Option:
 def download(key: String): Option[Path] =
-  Try(doDownload(key)).toOption
+  doDownload(key).catching[NotFoundException].toOption
 
-// Or when the failure is domain-meaningful:
+// Or when the failure is domain-meaningful, map the Left:
 def download(key: String): Either[StorageError, Path] =
-  Try(doDownload(key)).toEither.left.map:
-    case _: NotFoundException => StorageError.NotFound(key)
-    case e => StorageError.Unexpected(e.getMessage)
-```
-
-Use `either.catching[E]` when you know the specific exception type and want to
-stay within an `either` block:
-
-```scala
-val result: Either[IllegalArgumentException, Int] =
-  (if userInput then 10 else throw new IllegalArgumentException("boom"))
-    .catching[IllegalArgumentException]
+  doDownload(key)
+    .catching[Exception]
+    .left.map:
+      case _: NotFoundException => StorageError.NotFound(key)
+      case e => StorageError.Unexpected(e.getMessage)
 ```
 
 > **Important:** Never use bare `try`/`catch` for expected failures — this
