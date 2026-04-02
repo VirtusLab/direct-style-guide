@@ -21,7 +21,7 @@ A collection of skills for [Claude Code](https://claude.ai/claude-code). Written
 ### Install the skill
 
 ```
-/plugin install direct-style-scala@virtuslab-skills
+/plugin install direct-style-scala@virtuslab-scala-skills
 ```
 
 ### Manual installation
