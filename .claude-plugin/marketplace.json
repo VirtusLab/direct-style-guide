@@ -1,8 +1,8 @@
 {
   "name": "virtuslab-scala-skills",
   "description": "Claude Code Scala skills by VirtusLab",
-  "homepage": "https://github.com/VirtusLab/direct-style-guide",
-  "repository": "https://github.com/VirtusLab/direct-style-guide",
+  "homepage": "https://github.com/VirtusLab/scala-skiils",
+  "repository": "https://github.com/VirtusLab/scala-skiils",
   "plugins": [
     {
       "name": "direct-style-scala",
