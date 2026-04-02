@@ -172,8 +172,9 @@ https://raw.githubusercontent.com/VirtusLab/direct-style-guide/refs/heads/master
   mocks, trait-based effect boundaries.
 
 - [Concurrency and Inter-Thread Communication](150-shared-state-across-threads.md)
-  — Channels for signaling and data exchange, actors for serialized mutable
-  state, `AtomicReference` as a last resort.
+  — Flows for declarative concurrent pipelines (`mapPar`, `merge`,
+  `mapStateful`), channels for imperative send/receive, actors for serialized
+  mutable state.
 
 ## Error Handling
 

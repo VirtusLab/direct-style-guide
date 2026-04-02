@@ -2,15 +2,96 @@
 
 ## Dependencies
 
-- `"com.softwaremill.ox" %% "core"` — `supervised`, `fork`, channels, actors
+- `"com.softwaremill.ox" %% "core"` — `Flow`, `supervised`, `fork`, channels,
+  actors
 
 ---
 
+## Flows
+
+Flows are the preferred way to express concurrent data processing in Ox. A
+`Flow[T]` describes a lazy, composable pipeline that handles concurrency,
+backpressure, and error propagation behind a declarative API:
+
+```scala
+import ox.flow.Flow
+
+Flow.fromValues(1, 2, 3, 5, 6)
+  .filter(_ % 2 == 0)
+  .map(_ * 10)
+  .runForeach(println)
+```
+
+Flows are lazy — no elements are emitted until a `.run*` method is called.
+
+### Concurrent processing with mapPar
+
+`mapPar` runs a mapping function across multiple virtual threads, handling fork
+management and error propagation automatically:
+
+```scala
+Flow.fromIterable(urls)
+  .mapPar(8)(url => httpClient.get(url))
+  .runForeach(response => process(response))
+```
+
+Without Flows, this would require manually creating a `supervised` scope,
+forking workers, coordinating via channels, and handling errors — all of which
+`mapPar` encapsulates.
+
+### Merging multiple event sources
+
+`merge` combines two flows into one, processing elements from both
+concurrently. This replaces manual multi-channel select patterns:
+
+```scala
+val userEvents: Flow[Event] = Flow.fromSource(userChannel)
+val systemEvents: Flow[Event] = Flow.fromSource(systemChannel)
+
+userEvents
+  .merge(systemEvents)
+  .runForeach(event => handle(event))
+```
+
+### Stateful processing
+
+`mapStateful` threads state through a flow without any shared mutable state:
+
+```scala
+Flow.fromIterable(items)
+  .mapStateful(initialState()): (state, item) =>
+    val newState = process(state, item)
+    (newState, newState.lastResult)
+  .runForeach(result => emit(result))
+```
+
+### Periodic operations with tick
+
+`Flow.tick` creates a periodic signal that can be merged with a data flow:
+
+```scala
+val data: Flow[Event] = eventSource()
+val flushSignal: Flow[Event] = Flow.tick(flushInterval, FlushTick)
+
+data
+  .merge(flushSignal)
+  .mapStateful(initialState()):
+    case (state, FlushTick)    => val s = flush(state); (s, None)
+    case (state, DataEvent(e)) => val s = process(state, e); (s, Some(s.lastResult))
+  .collect { case Some(result) => result }
+  .runForeach(emit)
+```
+
+> **Important:** Use Flows as the default for concurrent data processing. They
+> handle fork lifecycle, error propagation, and backpressure automatically.
+> Drop to channels or manual forks only when Flow's declarative API doesn't
+> fit your use case.
+
 ## Channels
 
-Channels are the primary mechanism for communication between threads in Ox. A
-channel is a typed, backpressure-aware queue that supports completion and error
-propagation:
+Channels are the lower-level building block underneath Flows. Use them when you
+need imperative control over sending and receiving — for example, custom
+protocols or integration with callback-based APIs:
 
 ```scala
 import ox.*
@@ -33,10 +114,12 @@ supervised:
 `send` blocks when the buffer is full; `receive` blocks when the buffer is
 empty. Since Ox runs on virtual threads, blocking is cheap.
 
+Channels and Flows interoperate: `Flow.fromSource(channel)` wraps a channel in
+a Flow, and `flow.runToChannel()` materialises a Flow into a channel.
+
 ### Signaling between threads
 
-Use a channel instead of a shared flag when one thread needs to signal another.
-For example, a timer that triggers periodic saves:
+Use a channel instead of a shared flag when one thread needs to signal another:
 
 ```scala
 supervised:
@@ -52,45 +135,12 @@ supervised:
   inputSource.foreach: item =>
     state = process(state, item)
 
-  // Meanwhile, a separate thread handles save triggers:
   fork:
     repeatWhile:
       saveTrigger.receiveSafe() match
         case ChannelClosed.Done => false
         case _                 => save(state); true
   .discard
-```
-
-> **Important:** Prefer channels over `AtomicBoolean` flags or shared `var`s.
-> Channels are type-safe, support backpressure, and integrate with Ox's
-> structured concurrency — when the scope ends, channel operations are
-> interrupted cleanly.
-
-### Request-response between threads
-
-When a thread needs a result back, send a response channel along with the
-request:
-
-```scala
-case class Request(query: String, replyTo: Channel[Result])
-
-supervised:
-  val requests = Channel.bufferedDefault[Request]
-
-  // Worker thread
-  fork:
-    repeatWhile:
-      requests.receiveSafe() match
-        case ChannelClosed.Done => false
-        case req: Request =>
-          val result = processQuery(req.query)
-          req.replyTo.send(result)
-          true
-
-  // Client thread
-  val replyTo = Channel.rendezvous[Result]
-  requests.send(Request("lookup", replyTo))
-  val result = replyTo.receive()
 ```
 
 ## Actors
@@ -117,7 +167,6 @@ supervised:
   fork(ref.ask(_.increment(5))).discard
   fork(ref.ask(_.increment(3))).discard
 
-  // later
   val total = ref.ask(_.current)
 ```
 
@@ -125,26 +174,18 @@ supervised:
 schedules the invocation without waiting — use it for fire-and-forget
 operations.
 
-> **Important:** Actors use channels internally — they are not a separate
-> concurrency primitive, but a convenience for serialized access patterns.
-> Prefer actors over manual locking or `synchronized` blocks.
-
 ## AtomicReference as a last resort
 
-For simple cases where a full channel or actor is overkill (e.g. a shared
-counter or a single configuration value read by many threads), `AtomicReference`
-with atomic read-modify-write operations works:
+For simple cases where channels, actors, or Flows are overkill (e.g. a shared
+counter read by many threads), `AtomicReference` with atomic read-modify-write
+operations works:
 
 ```scala
 import java.util.concurrent.atomic.AtomicReference
 
 val stateRef = AtomicReference(initialState())
 
-// In thread A:
 stateRef.updateAndGet(state => process(state, item)).discard
-
-// In thread B:
-stateRef.updateAndGet(state => process(state, otherItem)).discard
 ```
 
 > **Warning:** Never use `stateRef.get()` followed by `stateRef.set(newState)`.
@@ -152,14 +193,14 @@ stateRef.updateAndGet(state => process(state, otherItem)).discard
 > overwriting those changes. Always use `updateAndGet` or `getAndUpdate`.
 
 > **Warning:** `updateAndGet` may retry the function under contention (CAS
-> loop). The function passed to it must be side-effect-free — no I/O, no
+> loop). The function passed to it MUST be side-effect-free — no I/O, no
 > logging, no channel operations.
 
 ## Scope propagation
 
 Only propagate `(using Ox)` when a method genuinely needs to start forks or
-register resources in the caller's scope. Prefer creating local, nested
-`supervised` blocks instead:
+register resources in the caller's scope. Otherwise, create a local
+`supervised` block:
 
 ```scala
 // Avoid — leaks concurrency scope to the caller:
@@ -180,6 +221,7 @@ def processAll(items: List[Item]): Unit =
 
 | Pattern | Use when |
 |---------|----------|
-| **Channel** | Threads need to communicate data or signals. The default choice. |
+| **Flow** | Data processing pipelines, concurrent mapping, merging streams, stateful transformations. The default choice. |
+| **Channel** | Imperative send/receive, custom protocols, callback integration. Lower-level than Flows. |
 | **Actor** | Multiple threads need serialized access to a mutable object. |
 | **AtomicReference** | Simple shared value with pure update functions. No I/O in updates. |

@@ -7,43 +7,35 @@
 
 ---
 
-## Two error channels
+## Recoverable vs unrecoverable errors
 
-Ox distinguishes two kinds of errors:
+The decision rule is simple: can the caller do something meaningful with this
+failure?
 
-- **Exceptions** — for defects and unexpected failures that should terminate the
-  current request, thread, or processing unit: bugs, programmer errors,
-  infrastructure failures, I/O errors from Java libraries. These are thrown and
-  propagate through `try`/`catch`, supervised scopes, and `par`/`race`
-  combinators.
+- **Recoverable** — the caller can handle it: show a message, try an
+  alternative, return a different response. Model these as `Either[E, T]`.
+  Examples: validation errors, not-found conditions, conflicts, unauthorized
+  access.
 
-- **Application errors** — for expected failures that the caller can handle:
-  validation errors, not-found conditions, conflicts, unauthorized access.
-  These are returned as values using `Either[E, T]`.
-
-The rule: if the caller is expected to handle the failure as part of normal
-program flow, it must be an `Either`. If the failure is unexpected and should
-abort the current operation, throw an exception.
+- **Unrecoverable** — the caller cannot fix it; the current fiber, request, or
+  processing unit should be terminated. Throw an exception. Ox's supervised
+  scopes, `par`, and `race` handle propagation and cleanup automatically.
+  Examples: bugs, database connection failures, corrupted data,
+  out-of-memory.
 
 ```scala
-// Wrong — "not found" is expected, not a defect:
+// Wrong — "not found" is recoverable, the caller can show a 404:
 def findUser(id: Id[User])(using DbTx): User =
   userModel.findById(id).getOrElse(throw new NoSuchElementException("user not found"))
 
-// Right — caller sees the failure in the type and handles it:
+// Right — caller sees the failure in the type and decides what to do:
 def findUser(id: Id[User])(using DbTx): Either[Fail, User] =
   userModel.findById(id).toRight(Fail.NotFound("user"))
 ```
 
-> **Important:** If a method can fail for reasons that are *not* bugs, its
-> return type must be `Either`. Throwing exceptions for expected failures hides
-> error paths from callers and bypasses the type system.
-
-> **Warning:** Do not use bare `try`/`catch` for converting expected exceptions
-> to domain types. Use the `.catching[E]` extension instead (enabled via
-> `import ox.either.catching`; see below). Reserve `try`/`catch` for defect
-> boundaries only (e.g. `catch NonFatal` at the top of a `forever` loop to log
-> and continue).
+> **Important:** If a failure is recoverable, its return type MUST be `Either`.
+> Throwing exceptions for recoverable failures hides error paths from callers
+> and bypasses the type system.
 
 ## The Fail ADT
 
