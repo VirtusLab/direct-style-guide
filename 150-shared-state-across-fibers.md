@@ -2,8 +2,7 @@
 
 ## Dependencies
 
-- `"com.softwaremill.ox" %% "core"` — structured concurrency scopes, `Channel`
-  for inter-fiber communication
+- `"com.softwaremill.ox" %% "core"` — structured concurrency scopes
 
 ---
 
@@ -14,55 +13,50 @@ need to share mutable state, naive approaches create data races. Virtual threads
 don't change the JVM memory model — `var` writes are not guaranteed visible
 across threads without synchronization.
 
-## Single-owner pattern with channels
+## Single-owner pattern
 
-The safest approach is to confine state mutation to a single fiber and
-communicate via Ox channels. Other fibers send signals; the owner fiber acts
-on them:
+The safest approach is to confine all state mutation to a single fiber. Other
+fibers only set a lightweight flag; the owner fiber checks it at safe points:
 
 ```scala
 import ox.*
-import ox.channels.{Channel, ChannelClosedException}
+import java.util.concurrent.atomic.AtomicBoolean
 
 def run()(using Ox): Unit =
   var state = initialState()
 
-  val saveSignal = Channel.buffered[Unit](1)
+  val saveRequested = AtomicBoolean(false)
 
-  // Timer sends periodic save signals
+  // Timer sets the flag periodically
   fork:
-    try
-      forever:
-        sleep(flushInterval)
-        flushSignal.send(())
-    catch case _: ChannelClosedException => ()
+    forever:
+      sleep(saveInterval)
+      saveRequested.set(true)
   .discard
 
-  // Single owner: main loop updates state AND saves
+  // Single owner: main loop updates state AND checks the flag
   inputSource.foreach: item =>
     state = process(state, item)
 
-    // Non-blocking check for save signal
-    saveSignal.tryReceive() match
-      case _: ChannelClosedException => ()
-      case _ => state = save(state)
+    if saveRequested.compareAndSet(true, false) then
+      state = save(state)
 ```
 
 > **Important:** State is owned by one fiber only — no concurrent reads or
-> writes. The timer does not touch state directly; it sends a signal that the
-> owner fiber acts on at a safe point.
+> writes. The timer does not touch state directly; it sets a flag that the
+> owner fiber checks at a safe point between items.
 
 ## AtomicReference pattern
 
 When the single-owner pattern doesn't fit (e.g. the input source itself blocks
-the fiber and cannot interleave signal checks), use `AtomicReference` with
+the fiber and cannot interleave flag checks), use `AtomicReference` with
 **atomic read-modify-write** operations:
 
 ```scala
 import java.util.concurrent.atomic.AtomicReference
 
 def run()(using Ox): Unit =
-  val stateRef = AtomicReference(initialState())
+  val stateRef = new AtomicReference(initialState())
 
   // Background fiber: atomic read-modify-write
   fork:
@@ -83,16 +77,22 @@ def run()(using Ox): Unit =
 
 This requires that `process` and `save` are **pure functions** from old state to
 new state — they cannot read the `AtomicReference` themselves, or they'll see
-stale data:
+stale data.
+
+> **Warning:** `updateAndGet` may retry the function under contention (CAS
+> loop). The function passed to it must be side-effect-free. If `save` performs
+> I/O (e.g. writing to storage), do it outside the atomic update — compute the
+> new state atomically, then perform I/O with the result:
 
 ```scala
-// Pure state transitions — no external state reads
-def process(state: State, item: Item): State =
-  state.copy(counts = state.counts.updated(item.key, state.counts.getOrElse(item.key, 0L) + 1))
+// Pure state transition — no I/O inside updateAndGet
+def markSaved(state: State): State =
+  state.copy(pending = Set.empty, lastSavedAt = Instant.now())
 
-def save(state: State): State =
-  storage.write(state.counts)
-  state.copy(lastSavedAt = Instant.now())
+// I/O happens outside the atomic update
+val snapshot = stateRef.get()
+storage.write(snapshot.pending)
+stateRef.updateAndGet(markSaved).discard
 ```
 
 ## Extracting return values from `updateAndGet`
@@ -103,9 +103,10 @@ item was accepted or rejected), return both in the state and extract afterward:
 ```scala
 case class StateWithResult(state: State, lastResult: Result)
 
-stateRef.updateAndGet: current =>
+val updated = stateRef.updateAndGet: current =>
   val (newState, result) = process(current.state, item)
   StateWithResult(newState, result)
+val result = updated.lastResult
 ```
 
 This avoids the anti-pattern of using a mutable `var` to smuggle values out of
@@ -115,11 +116,11 @@ the `updateAndGet` lambda.
 
 | Pattern | Use when |
 |---------|----------|
-| **Single-owner + channels** | One fiber owns all state; others only send signals. Simplest, no races possible. |
-| **AtomicReference + updateAndGet** | Multiple fibers must independently update state; state transitions are pure functions. |
+| **Single-owner + flag** | One fiber owns all state; others only signal. Simplest, no races possible. |
+| **AtomicReference + updateAndGet** | Multiple fibers must independently update state; state transitions are pure functions with no I/O. |
 | **Ox supervised + actor** | Complex protocols where fibers need request/response interaction, not just fire-and-forget signals. |
 
 > **Important:** Avoid sharing mutable state across fibers whenever possible.
 > Restructure the design so one fiber owns the state and others communicate
-> through channels. Use `AtomicReference` only when the single-owner pattern
-> is impractical.
+> through flags or channels. Use `AtomicReference` only when the single-owner
+> pattern is impractical.
