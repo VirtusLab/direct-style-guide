@@ -155,6 +155,27 @@ stateRef.updateAndGet(state => process(state, otherItem)).discard
 > loop). The function passed to it must be side-effect-free — no I/O, no
 > logging, no channel operations.
 
+## Scope propagation
+
+Only propagate `(using Ox)` when a method genuinely needs to start forks or
+register resources in the caller's scope. Prefer creating local, nested
+`supervised` blocks instead:
+
+```scala
+// Avoid — leaks concurrency scope to the caller:
+def processAll(items: List[Item])(using Ox): Unit =
+  items.foreach(item => fork(handle(item)).discard)
+
+// Prefer — concurrency is contained within the method:
+def processAll(items: List[Item]): Unit =
+  supervised:
+    items.foreach(item => fork(handle(item)).discard)
+```
+
+> **Important:** `(using Ox)` in a method signature means "I will start
+> forks or register resources in your scope." If the method manages its own
+> concurrency lifecycle, use a local `supervised` block instead.
+
 ## Choosing the right pattern
 
 | Pattern | Use when |

@@ -8,6 +8,12 @@
 
 ---
 
+> **Important:** Use `.handle` / `.handleSecurity` / `.handleSuccess` to wire
+> endpoint logic — not `.serverLogic` / `.serverSecurityLogic`. The `.handle`
+> family is the direct-style API that runs synchronously on virtual threads.
+> The `.serverLogic` family requires a monadic wrapper (`Future`, `IO`, etc.)
+> and is not used in direct-style applications.
+
 ## Security headers
 
 Anti-clickjacking headers added to `baseEndpoint`, inherited by all endpoints:

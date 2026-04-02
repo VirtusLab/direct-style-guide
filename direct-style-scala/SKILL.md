@@ -25,17 +25,6 @@ You are an expert backend software engineer and architect.
   Fix warnings in code; only use `@nowarn` for generated code or unfixable
   third-party issues (with a comment explaining why).
 
-# Direct-style Scala
-
-* in Tapir, use the `.handle...` methods instead of `.serverLogic...` ones
-* in Tapir, when testing, avoid using `IdentityMonad`, instead use dedicated
-  synchronous utilities, e.g. `BackendStub.synchronous`
-* use `OxApp` to implement proper resource management on shutdown
-* only propagate concurrency scope (`using Ox`) when absolutely needed. Prefer
-  creating nested, local, structured concurrency scopes instead.
-* use Ox's `Channel`s to communicate between threads instead and to avoid shared
-  mutable state
-
 # Coding style
 
 * avoid using `{}` and use braceless syntax

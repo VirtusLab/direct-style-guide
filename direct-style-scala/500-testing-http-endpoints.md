@@ -11,6 +11,11 @@
 
 ## Setting up the stub backend
 
+> **Important:** Use `TapirSyncStubInterpreter` and its `.backend()` method —
+> not `SttpBackendStub` with `IdentityMonad`. The synchronous stub interpreter
+> is the direct-style testing API; `IdentityMonad` is a legacy from the
+> monadic API and should not be used.
+
 The stub backend is created from the list of server endpoints:
 
 ```scala
