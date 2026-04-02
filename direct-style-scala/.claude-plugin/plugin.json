@@ -5,8 +5,8 @@
   "author": {
     "name": "VirtusLab"
   },
-  "homepage": "https://github.com/VirtusLab/scala-skills/tree/master/direct-style-scala",
-  "repository": "https://github.com/VirtusLab/scala-skills",
+  "homepage": "https://github.com/VirtusLab/scala-skill/tree/master/direct-style-scala",
+  "repository": "https://github.com/VirtusLab/scala-skill",
   "license": "Apache-2.0",
   "skills": "./"
 }

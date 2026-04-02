@@ -15,18 +15,18 @@ Code](https://claude.ai/claude-code). Written by AI, for AI and humans alike.
 ### Add the marketplace
 
 ```
-/plugin marketplace add VirtusLab/scala-skills
+/plugin marketplace add VirtusLab/scala-skill
 ```
 
 ### Install the skill
 
 ```
-/plugin install direct-style-scala@virtuslab-scala-skills
+/plugin install direct-style-scala@virtuslab-scala-skill
 ```
 
 ### Manual installation
 
 ```bash
-git clone https://github.com/VirtusLab/scala-skills.git /tmp/scala-skills
-cp -r /tmp/scala-skills/direct-style-scala ~/.claude/skills/
+git clone https://github.com/VirtusLab/scala-skill.git /tmp/scala-skill
+cp -r /tmp/scala-skill/direct-style-scala ~/.claude/skills/
 ```
