@@ -37,8 +37,13 @@ def findUser(id: Id[User])(using DbTx): Either[Fail, User] =
 
 > **Important:** If a method can fail for reasons that are *not* bugs, its
 > return type must be `Either`. Throwing exceptions for expected failures hides
-> error paths from callers and bypasses the type system. See [Truthful
-> signatures](140-functional-patterns.md) for the broader principle.
+> error paths from callers and bypasses the type system.
+
+> **Warning:** Do not use bare `try`/`catch` for converting expected exceptions
+> to domain types. Use the `.catching[E]` extension instead (enabled via
+> `import ox.either.catching`; see below). Reserve `try`/`catch` for defect
+> boundaries only (e.g. `catch NonFatal` at the top of a `forever` loop to log
+> and continue).
 
 ## The Fail ADT
 
@@ -159,6 +164,41 @@ available via `.orThrow`:
 ```scala
 val value: Int = result.orThrow
 ```
+
+## Wrapping exception-throwing code
+
+Java and third-party libraries often throw exceptions for failures that are
+expected in your domain. Convert these to values at the boundary using
+`.catching` — never let `try`/`catch` become your error-handling strategy for
+expected failures.
+
+```scala
+import ox.either.catching
+
+// Wrong — bare try/catch for an expected failure:
+def download(key: String): Option[Path] =
+  try
+    val path = doDownload(key)
+    Some(path)
+  catch case _: NotFoundException => None
+
+// Right — use .catching to convert the exception to Either, then to Option:
+def download(key: String): Option[Path] =
+  doDownload(key).catching[NotFoundException].toOption
+
+// Or when the failure is domain-meaningful, map the Left:
+def download(key: String): Either[StorageError, Path] =
+  doDownload(key)
+    .catching[NotFoundException]
+    .left.map(e => StorageError.NotFound(key))
+```
+
+> **Important:** Never use bare `try`/`catch` for expected failures — this
+> hides error paths and bypasses the type system. The `try`/`catch` pattern is
+> only appropriate for truly unexpected exceptions (defects) at the outermost
+> boundary of a processing loop (e.g. a `catch NonFatal` in a `forever` loop
+> to prevent the fiber from dying). Always catch the most specific expected
+> exception type — avoid `.catching[Exception]` as it swallows defects.
 
 ## Nesting rules
 
