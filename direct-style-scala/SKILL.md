@@ -200,7 +200,7 @@ marks something as required, it is required.
 
 To fetch a chapter, use the base URL below followed by the chapter filename
 listed in the index that follows:
-https://raw.githubusercontent.com/VirtusLab/scala-skill/refs/heads/master/direct-style-scala/
+https://raw.githubusercontent.com/virtuslab/scala-skill/refs/heads/master/direct-style-scala/
 
 ## Application Structure
 
