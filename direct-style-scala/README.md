@@ -8,4 +8,4 @@ A skill for writing direct-style Scala 3 applications with virtual threads
 
 This skill assumes the
 [Metals MCP](https://scalameta.org/metals/docs/integrations/mcp-server)
-server is available.
+server is available and uses [sbt](https://www.scala-sbt.org) as the build tool.
